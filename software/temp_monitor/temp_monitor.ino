@@ -1,3 +1,5 @@
+#include <Wire.h>
+
 const int S0 = 2;
 const int S1 = 3;
 const int S2 = 4;
@@ -11,6 +13,17 @@ const float FAULT_TEMP = 60.0; // LED blinks above this temperature
 
 float temps[16]; // stores all 16 temperatures
 
+// Placeholders based on 0.6 V at 25 C and -2 mV/C, replace after testing
+const float T1 = 25.0;
+const float V1 = 0.600;
+const float T2 = 75.0;
+const float V2 = 0.500;
+
+// Convert voltage to temp using linear interpolation between the two points
+float voltageToTemp(float voltage) {
+  return T1 + (voltage - V1) * (T2 - T1) / (V2 - V1);
+}
+
 void setup() {
   pinMode(S0, OUTPUT);
   pinMode(S1, OUTPUT);
@@ -22,6 +35,7 @@ void setup() {
   digitalWrite(MUX_EN, LOW); // turn on the mux
 
   Wire.begin();
+  Serial.begin(9600);
 }
 
 void loop() {
@@ -39,8 +53,17 @@ void loop() {
     int raw = analogRead(MUX_SIG);
     float voltage = raw * 5.0 / 1023.0;
 
-    // Volts to temp, diode is about 0.6v at 25c and drops 2mv per degree
-    temps[ch] = 25.0 + (0.6 - voltage) / 0.002;
+    // volts to temp
+    temps[ch] = voltageToTemp(voltage);
+
+    // Print voltage and temp for testing
+    Serial.print("CH");
+    Serial.print(ch);
+    Serial.print(": ");
+    Serial.print(voltage, 3);
+    Serial.print(" V, ");
+    Serial.print(temps[ch], 1);
+    Serial.println(" C");
 
     // Keep the highest temperature
     if (temps[ch] > maxTemp) {
@@ -64,3 +87,4 @@ void loop() {
   }
 
   delay(500);
+}
